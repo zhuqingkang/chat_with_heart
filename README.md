@@ -1,5 +1,11 @@
 # nanocode - 极简编码智能体
 
+> **本项目基于 [1rgs/nanocode](https://github.com/1rgs/nanocode) 迭代开发。**
+> 上游是一个约 200 行的 Python 单文件、零第三方依赖的极简 Claude Code 替代方案
+> （DeepSeek + function calling + 双层循环）；本仓库保留了它的核心架构
+> （REPL 外层 + agent loop 内层 + TOOLS 注册表），并在此基础上做了改造：
+> 工具外置到 `function_call/` 包、工具扩展到 10 个、修复 bash 超时 bug 等。
+
 一个零第三方依赖的命令行 coding agent：DeepSeek + function calling + 双层循环。
 代码不到 200 行（本体），适合作为学习 agent 原理的最小范本。
 
