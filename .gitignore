@@ -1,0 +1,9 @@
+.vscode
+
+.workbuddy
+
+test
+
+# Python 编译产物
+__pycache__/
+*.pyc
