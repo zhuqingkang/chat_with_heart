@@ -32,8 +32,13 @@ def _kill_tree(proc):
 
 
 def bash(args):
+    cmd = args.get("cmd")
+    if not cmd:
+        # KeyError('cmd') 的错误信息对模型没有诊断价值；
+        # 打出实际收到的键名，能立刻看出模型是不是幻觉了参数名
+        return f"error: missing 'cmd' argument, got keys: {list(args.keys())}"
     proc = subprocess.Popen(
-        args["cmd"],
+        cmd,
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -46,7 +51,7 @@ def bash(args):
     def reader():
         # 在子线程里跑：读管道 + 实时打印
         # （print 有内部锁，跨线程调用是安全的）
-        for line in proc.stdout:
+        for line in proc.stdout:  # type: ignore
             print(f"  {DIM}│ {line.rstrip()}{RESET}", flush=True)
             lines.append(line)
 

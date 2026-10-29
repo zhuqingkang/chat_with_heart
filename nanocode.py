@@ -17,6 +17,9 @@ from function_call.base.write.write_markdown import write_markdown
 from function_call.base.git.git import git_tool
 from function_call.base.exec.bash import bash
 from function_call.base.system.now import now
+from function_call.base.memory.memory_tools import remember, recall
+from function_call.base.memory.distill import safe_distill
+from function_call.base.memory.memory_store import build_memory_prompt
 
 # 声明三个常量KEY，URL，MODEL -> LLM
 API_KEY = os.environ.get("DEEPSEEK_API_KEY", os.getenv("DEEPSEEK_API_KEY"))
@@ -84,6 +87,27 @@ TOOLS = {
         "Get current local date/time, weekday, UTC offset and unix timestamp",
         {},
         now,
+    ),
+    "remember": (
+        "Save a memory entry with emotion metadata. Auto conflict-resolve: "
+        "similar old entries get UPDATEd or skipped (NOOP). Affinity is "
+        "accumulated automatically from the last entry",
+        {
+            "event": "string",
+            "title": "string?",
+            "mood_label": "string?",
+            "valence": "number?",
+            "arousal": "number?",
+            "affinity_delta": "number?",
+            "persona_note": "string?",
+        },
+        remember,
+    ),
+    "recall": (
+        "Search memories: by date (yyyy-mm-dd, returns that day's file) "
+        "or by keyword (scans all memory files for matching entries)",
+        {"date": "string?", "keyword": "string?"},
+        recall,
     ),
 }
 
@@ -167,11 +191,65 @@ def preview_result(result):
     return preview
 
 
+def build_system_prompt():
+    """拼装 system prompt：基础指令 + 启动记忆注入 + 记忆工具说明。
+    CLI 与 Web 前端共用。"""
+    return (
+        f"Concise coding assistant. cwd: {os.getcwd()}\n\n"
+        + build_memory_prompt()
+        + "\n\nYou have persistent memory in memory/: use remember to save "
+        "important decisions, preferences or emotional turning points "
+        "(with mood metadata); use recall(date=...) or recall(keyword=...) "
+        "to look up past memories before answering questions about the past."
+    )
+
+
+def run_turn(messages, system_prompt):
+    """一轮用户输入的 agent 循环：调模型 → 执行工具 → 再调模型，
+    直到模型不再请求工具。返回模型最终回复文本。CLI 与 Web 共用。"""
+    final_text = ""
+    while True:
+        msg = call_api(messages, system_prompt)["choices"][0]["message"]
+        text = msg.get("content") or ""
+        tool_calls = msg.get("tool_calls") or []
+
+        if text:
+            print(f"\n{CYAN}⏺{RESET} {render_markdown(text)}")
+            final_text = text
+
+        assistant = {"role": "assistant", "content": text or None}
+        if tool_calls:
+            assistant["tool_calls"] = tool_calls
+        messages.append(assistant)
+
+        # handle tool calls
+        if not tool_calls:
+            break
+
+        for call in tool_calls:
+            name = call["function"]["name"]
+            args = json.loads(call["function"]["arguments"])
+            arg_preview = str(next(iter(args.values()), ""))[:50]
+            print(f"\n{GREEN}⏺ {name.capitalize()}{RESET}({DIM}{arg_preview}{RESET})")
+
+            result = run_tool(name, args)
+            print(f"  {DIM}⎿  {preview_result(result)}{RESET}")
+
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call["id"],
+                    "content": result,
+                }
+            )
+
+    return final_text
+
+
 def main():
     print(f"{BOLD}nanocode{RESET} | {DIM}{MODEL} (DeepSeek) | {os.getcwd()}{RESET}\n")
     messages = []
-    system_prompt = f"Concise coding assistant. cwd: {os.getcwd()}"
-
+    system_prompt = build_system_prompt()
 
     while True:
         try:
@@ -180,50 +258,22 @@ def main():
             print(separator())
             if not user_input:
                 continue
-            if user_input in ("/q", "exit"):
+            if user_input in ("/q", "exit", "quit"):
+                summary = safe_distill(messages, call_api)
+                if summary:
+                    print(f"{GREEN}⏺ {summary}{RESET}")
                 break
             if user_input == "/c":
+                summary = safe_distill(messages, call_api)
+                if summary:
+                    print(f"{GREEN}⏺ {summary}{RESET}")
                 messages = []
                 print(f"{GREEN}⏺ Cleared conversation{RESET}")
                 continue
 
             messages.append({"role": "user", "content": user_input})
 
-            # agent loop: call model until it stops requesting tools
-            while True:
-                msg = call_api(messages, system_prompt)["choices"][0]["message"]
-                text = msg.get("content") or ""
-                tool_calls = msg.get("tool_calls") or []
-
-                if text:
-                    print(f"\n{CYAN}⏺{RESET} {render_markdown(text)}")
-
-                assistant = {"role": "assistant", "content": text or None}
-                if tool_calls:
-                    assistant["tool_calls"] = tool_calls
-                messages.append(assistant)
-
-                # handle tool calls
-                if not tool_calls:
-                    break
-
-                for call in tool_calls:
-                    name = call["function"]["name"]
-                    args = json.loads(call["function"]["arguments"])
-                    arg_preview = str(next(iter(args.values()), ""))[:50]
-                    print(f"\n{GREEN}⏺ {name.capitalize()}{RESET}({DIM}{arg_preview}{RESET})")
-
-                    result = run_tool(name, args)
-                    print(f"  {DIM}⎿  {preview_result(result)}{RESET}")
-
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": call["id"],
-                            "content": result,
-                        }
-                    )
-
+            run_turn(messages, system_prompt)
             print()
 
         except (KeyboardInterrupt, EOFError):

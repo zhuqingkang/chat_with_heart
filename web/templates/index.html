@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nanocode · 极简编码智能体</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+  <div class="app" id="app">
+    <!-- ============ 左侧：记忆状态面板 ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <div class="logo">NC</div>
+        <div class="sidebar-title">
+          <strong>nanocode</strong>
+          <span>极简编码智能体</span>
+        </div>
+      </div>
+
+      <button id="newChat" class="new-chat" type="button">
+        <span class="plus">+</span> 新建对话
+      </button>
+
+      <div class="panel-title">记忆状态</div>
+      <div class="affinity-bar"><i id="affinityBar" style="width: 50%"></i></div>
+      <div class="stat-row"><span>好感度</span><b id="statAffinity">--</b></div>
+      <div class="stat-row"><span>心情</span><b id="statMood">--</b></div>
+      <div class="stat-row"><span>更新于</span><b id="statTime">--</b></div>
+
+      <div class="panel-title">最近记忆</div>
+      <div class="conv-list" id="memList"></div>
+
+      <div class="sidebar-foot">记忆存于 memory/ · 对话结束自动蒸馏</div>
+    </aside>
+
+    <!-- ============ 右侧：对话主区 ============ -->
+    <div class="main">
+      <header class="app-header">
+        <button id="sidebarToggle" class="icon-btn" type="button" aria-label="打开侧栏">☰</button>
+        <div class="titles">
+          <h1 id="convTitle">nanocode</h1>
+          <p>DeepSeek · 12 个工具 · 记忆与情感模拟</p>
+        </div>
+        <span class="status" id="status">
+          <i class="dot"></i><span id="statusText">就绪</span>
+        </span>
+      </header>
+
+      <main class="chat" id="chat">
+        <div class="msg bot">
+          <div class="avatar">AI</div>
+          <div class="bubble rich">
+            我是 nanocode，一个带记忆的极简编码智能体。<br />
+            <span class="badge rag">12 工具</span> 读写文件、执行命令、管理 git；
+            <span class="badge faq">记忆</span> 跨会话记住你，并带着当时的情绪回复。
+          </div>
+        </div>
+      </main>
+
+      <!-- ============ 表情包开关 ============ -->
+      <div class="toolbar" id="toolbar">
+        <div class="segmented" id="memeSwitch" role="group" aria-label="表情包">
+          <button type="button" data-meme="on" class="active">表情包 开</button>
+          <button type="button" data-meme="off">表情包 关</button>
+        </div>
+        <span class="toolbar-hint" id="toolbarHint">回复会按当前心情附上一张表情包</span>
+      </div>
+
+      <footer class="composer">
+        <textarea id="input" rows="1" placeholder="说点什么，Enter 发送，Shift + Enter 换行"></textarea>
+        <button id="send" type="button">
+          <span class="btn-text">发送</span>
+          <span class="spinner"></span>
+        </button>
+      </footer>
+
+      <p class="hint">记忆写入 <code>memory/</code>，退出 CLI 时也会自动蒸馏</p>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+
+</html>

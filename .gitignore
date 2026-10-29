@@ -1,6 +1,11 @@
 .vscode
+.idea
 
 .workbuddy
+
+# 只忽略仓库根的记忆数据目录（隐私）；
+# 不要写成不带斜杠的 memory——会误伤 function_call/base/memory/ 代码包
+/memory/
 
 test
 
